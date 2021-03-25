@@ -1,5 +1,6 @@
 use std::io::{self, Write, stdin, stdout};
 use std::time::Duration;
+use serialport::{DataBits, StopBits};
 
 fn main() {
     let ports = serialport::available_ports().expect("No ports found!");
@@ -23,6 +24,8 @@ fn main() {
     let index = s.parse::<usize>().unwrap();
 
     let port = serialport::new(&ports[index - 1].port_name, 9600)
+        .stop_bits(StopBits::One)
+        .data_bits(DataBits::Eight)
         .timeout(Duration::from_millis(10))
         .open();
 
@@ -32,6 +35,13 @@ fn main() {
             loop {
                 match port.read(serial_buf.as_mut_slice()) {
                     Ok(t) => io::stdout().write_all(&serial_buf[..t]).unwrap(),
+                    Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
+                    Err(e) => eprintln!("{:?}", e),
+                }
+                match port.write("abcdef".as_bytes()) {
+                    Ok(_) => {
+                        std::io::stdout().flush().unwrap();
+                    }
                     Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
                     Err(e) => eprintln!("{:?}", e),
                 }
