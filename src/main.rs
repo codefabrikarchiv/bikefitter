@@ -1,34 +1,36 @@
 mod serial;
 
-use serial::Datagram;
-use iced::{button, Align, Button, Column, Element, Sandbox, Settings, Text, Radio};
+use iced::{executor, button, Align, Clipboard, Button, Column, Element, Application, Settings, Text, Radio, Command, Subscription};
 
 #[derive(Default)]
 struct Reader {
     port: i32,
     start_button: button::State,
     active: bool,
-    last_values: Datagram,
+    last: Datagram
 }
 
 #[derive(Debug, Clone, Copy)]
 enum Message {
     RadioSelected(i32),
     SerialStarted,
+    SerialUpdated(Datagram)
 }
 
-impl Sandbox for Reader {
+impl Application for Reader {
+    type Executor = executor::Default;
     type Message = Message;
+    type Flags = ();
 
-    fn new() -> Self {
-        Self::default()
+    fn new(_flags: ()) -> (Self, Command<Message>) {
+        (Self::default(), Command::none())
     }
 
     fn title(&self) -> String {
         String::from("Counter - Iced")
     }
 
-    fn update(&mut self, message: Message) {
+    fn update(&mut self, message: Self::Message, _clipboard: &mut Clipboard) -> Command<Self::Message> {
         match message {
             Message::RadioSelected(v) => {
                 self.port = v;
@@ -37,17 +39,25 @@ impl Sandbox for Reader {
                 println!("start");
                 self.active = true;
                 let port_name = serial::port_name_of(self.port);
-                let handler = serial::register(port_name, |datagram: Box<Datagram>| {
+                let mut Serial = Serial::new()
+                /*let handler = serial::register(port_name, |datagram: Box<Datagram>| {
                     // println!("RECV {} {} {}", datagram.x, datagram.y, datagram.action);
                     self.last_values = *datagram;
                     true
                 });
-                handler.join();
+                handler.join();*/
+            },
+            Message::SerialUpdate(datagram) => {
+                *self = Reader {
+                    reading: datagram
+                }
             }
         }
+
+        Command::none()
     }
 
-    fn view(&mut self) -> Element<Message> {
+    fn view(&mut self) -> Element<Self::Message> {
         let mut ui = Column::new()
             .padding(20)
             .align_items(Align::Center);
@@ -66,6 +76,8 @@ impl Sandbox for Reader {
             Text::new(self.last_values.x.to_string())
         ).into()
     }
+
+
 }
 
 fn main() {
