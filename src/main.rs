@@ -1,55 +1,77 @@
-use std::io::{self, Write, stdin, stdout};
-use std::time::Duration;
-use serialport::{DataBits, StopBits};
+mod serial;
 
-fn main() {
-    let ports = serialport::available_ports().expect("No ports found!");
-    let mut index = 1;
-    for p in &ports {
-        println!("{}: {}", index, p.port_name);
-        index += 1;
+use serial::Datagram;
+use iced::{button, Align, Button, Column, Element, Sandbox, Settings, Text, Radio};
+
+#[derive(Default)]
+struct Reader {
+    port: i32,
+    start_button: button::State,
+    active: bool,
+    last_values: Datagram,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum Message {
+    RadioSelected(i32),
+    SerialStarted,
+}
+
+impl Sandbox for Reader {
+    type Message = Message;
+
+    fn new() -> Self {
+        Self::default()
     }
 
-    println!("Select port number: ");
-    let _ = stdout().flush();
-    let mut s = String::new();
-    stdin().read_line(&mut s).expect("Did not enter a correct string");
-    if let Some('\n') = s.chars().next_back() {
-        s.pop();
-    }
-    if let Some('\r') = s.chars().next_back() {
-        s.pop();
+    fn title(&self) -> String {
+        String::from("Counter - Iced")
     }
 
-    let index = s.parse::<usize>().unwrap();
-
-    let port = serialport::new(&ports[index - 1].port_name, 9600)
-        .stop_bits(StopBits::One)
-        .data_bits(DataBits::Eight)
-        .timeout(Duration::from_millis(10))
-        .open();
-
-    match port {
-        Ok(mut port) => {
-            let mut serial_buf: Vec<u8> = vec![0; 1000];
-            loop {
-                match port.read(serial_buf.as_mut_slice()) {
-                    Ok(t) => io::stdout().write_all(&serial_buf[..t]).unwrap(),
-                    Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
-                    Err(e) => eprintln!("{:?}", e),
-                }
-                match port.write("abcdef".as_bytes()) {
-                    Ok(_) => {
-                        std::io::stdout().flush().unwrap();
-                    }
-                    Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
-                    Err(e) => eprintln!("{:?}", e),
-                }
+    fn update(&mut self, message: Message) {
+        match message {
+            Message::RadioSelected(v) => {
+                self.port = v;
+            }
+            Message::SerialStarted => {
+                println!("start");
+                self.active = true;
+                let port_name = serial::port_name_of(self.port);
+                let handler = serial::register(port_name, |datagram: Box<Datagram>| {
+                    // println!("RECV {} {} {}", datagram.x, datagram.y, datagram.action);
+                    self.last_values = *datagram;
+                    true
+                });
+                handler.join();
             }
         }
-        Err(e) => {
-            eprintln!("Failed to open port. Error: {}", e);
-            ::std::process::exit(1);
+    }
+
+    fn view(&mut self) -> Element<Message> {
+        let mut ui = Column::new()
+            .padding(20)
+            .align_items(Align::Center);
+        let ports = serial::get_ports();
+        for p in ports {
+            ui = ui.push(
+                Radio::new(p.index, format!("{}", p.name), Some(self.port), Message::RadioSelected)
+            )
         }
+        ui.push(
+            Button::new(&mut self.start_button, Text::new("Start"))
+                    .on_press(Message::SerialStarted),
+        ).push(
+            Text::new(self.active.to_string())
+        ).push(
+            Text::new(self.last_values.x.to_string())
+        ).into()
+    }
+}
+
+fn main() {
+    let result = Reader::run(Settings::default());
+    match result {
+        Ok(v) => println!("{:?}", v),
+        Err(e) => println!("{:?}", e)
     }
 }
