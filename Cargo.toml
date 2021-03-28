@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 serialport = "4.0.0"
 iced = { git = "https://github.com/hecrj/iced", branch = "master", features = ["glow", "tokio"] }
+async-std = "1.6.5"

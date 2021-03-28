@@ -1,16 +1,20 @@
 use std::string::String;
-use std::thread::{self, JoinHandle};
 use std::str;
+
+use async_std::task::Poll;
+use async_std::task::Context;
+use async_std::prelude::Stream;
+
 
 use serialport::{DataBits, StopBits};
 use std::io::{self, Write};
 use std::time::Duration;
 
-mod datagram;
-mod port;
+use crate::protocol::protocol::Datagram;
+use crate::protocol::protocol::Port;
 
 pub struct Serial {
-    pub conn: SerialPort,
+    pub conn: Box<dyn serialport::SerialPort>,
     pub data: Datagram,
 }
 
@@ -24,7 +28,7 @@ impl Serial {
         let ports = serialport::available_ports().expect("No ports found!");
         let mut index = 1;
         for p in ports {
-            vec.push(Seria lPort {
+            vec.push(Port {
                 name: p.port_name,
                 index: index,
             });
@@ -34,14 +38,14 @@ impl Serial {
     }
 
     pub fn port_name_of(index: i32) -> String {
-        get_ports()
+        Serial::get_ports()
             .into_iter()
             .find(|x| x.index == index)
             .unwrap()
             .name
     }
 
-    pub fn start() -> () {
+    pub fn start(port_name: String) -> () {
         let mut conn = serialport::new(port_name, 9600)
             .stop_bits(StopBits::One)
             .data_bits(DataBits::Eight)
@@ -54,9 +58,9 @@ impl Serial {
 impl Stream for Serial {
     type Item = Datagram;
 
-    fn poll_next(mut self: Pin<&mut Self>, cy: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut serial_buf: Vec<u8> = vec![0; 1000];
-        match conn.read(serial_buf.as_mut_slice()) {
+        match self.conn.read(serial_buf.as_mut_slice()) {
             Ok(t) => {
                 io::stdout().write_all(&serial_buf[..t]).unwrap();
                 let first_line = str::from_utf8(&serial_buf).unwrap().lines().next().unwrap();

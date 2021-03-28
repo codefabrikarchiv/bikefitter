@@ -1,6 +1,9 @@
+mod protocol;
+use crate::protocol::protocol::Datagram;
 mod serial;
+use crate::serial::Serial;
 
-use iced::{executor, button, Align, Clipboard, Button, Column, Element, Application, Settings, Text, Radio, Command, Subscription};
+use iced::{executor, button, Align, Clipboard, Button, Column, Element, Application, Settings, Text, Radio, Command};
 
 #[derive(Default)]
 struct Reader {
@@ -30,7 +33,7 @@ impl Application for Reader {
         String::from("Counter - Iced")
     }
 
-    fn update(&mut self, message: Self::Message, _clipboard: &mut Clipboard) -> Command<Self::Message> {
+    async fn update(&mut self, message: Self::Message, _clipboard: &mut Clipboard) -> Command<Self::Message> {
         match message {
             Message::RadioSelected(v) => {
                 self.port = v;
@@ -38,8 +41,13 @@ impl Application for Reader {
             Message::SerialStarted => {
                 println!("start");
                 self.active = true;
-                let port_name = serial::port_name_of(self.port);
-                let mut Serial = Serial::new()
+                let port_name = Serial::port_name_of(self.port);
+                let mut serial = Serial::new();
+                serial.start();
+                loop {
+                    let x = serial.next().await.unwrap();
+                    println!("{:?}", x);
+                }
                 /*let handler = serial::register(port_name, |datagram: Box<Datagram>| {
                     // println!("RECV {} {} {}", datagram.x, datagram.y, datagram.action);
                     self.last_values = *datagram;
@@ -47,10 +55,10 @@ impl Application for Reader {
                 });
                 handler.join();*/
             },
-            Message::SerialUpdate(datagram) => {
-                *self = Reader {
+            Message::SerialUpdated(datagram) => {
+                /* *self = Reader {
                     reading: datagram
-                }
+                }*/
             }
         }
 
@@ -61,7 +69,7 @@ impl Application for Reader {
         let mut ui = Column::new()
             .padding(20)
             .align_items(Align::Center);
-        let ports = serial::get_ports();
+        let ports = Serial::get_ports();
         for p in ports {
             ui = ui.push(
                 Radio::new(p.index, format!("{}", p.name), Some(self.port), Message::RadioSelected)
@@ -73,7 +81,7 @@ impl Application for Reader {
         ).push(
             Text::new(self.active.to_string())
         ).push(
-            Text::new(self.last_values.x.to_string())
+            Text::new(self.last.x.to_string())
         ).into()
     }
 
