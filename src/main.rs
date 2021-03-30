@@ -1,27 +1,28 @@
 mod download;
 mod serial;
-
 mod dataframe;
-use dataframe::Dataframe;
 
 use iced::{
     button, executor, Align, Application, Button, Column, Command,
-    Element, Settings, Subscription, Text, Radio, Clipboard,
+    Element, Settings, Subscription, Text, Radio, Clipboard, Row,
 };
 
 #[derive(Default)]
 struct Reader {
     start_button: button::State,
+    export_button: button::State,
     port: i32,
     active: bool,
     last_value: dataframe::Dataframe,
+    snapshots: Vec<dataframe::Dataframe>,
 }
 
 #[derive(Debug, Clone)]
 enum Message {
     RadioSelected(i32),
-    SerialStarted,
+    SerialStartStop,
     SerialUpdate(download::Progress),
+    Export,
 }
 
 impl Application for Reader {
@@ -34,7 +35,7 @@ impl Application for Reader {
     }
 
     fn title(&self) -> String {
-        String::from("Counter - Iced")
+        String::from("Bike Fitting")
     }
 
     fn update(&mut self, message: Self::Message, _clipboard: &mut Clipboard) -> Command<Self::Message> {
@@ -42,8 +43,8 @@ impl Application for Reader {
             Message::RadioSelected(v) => {
                 self.port = v;
             }
-            Message::SerialStarted => {
-                self.active = true;
+            Message::SerialStartStop => {
+                self.active = !self.active;
             }
             Message::SerialUpdate(message) => {
                 match message {
@@ -51,20 +52,19 @@ impl Application for Reader {
                         // no op
                     }
                     download::Progress::Advanced(line) => {
-                        let parts: Vec<&str> = line.split('|').collect();
-                        let x = parts[0].to_string().parse::<i32>().unwrap();
-                        let y = parts[1].to_string().parse::<i32>().unwrap();
-                        let action = parts[2].to_string().parse::<i32>().unwrap();
-                        self.last_value = Dataframe {
-                            x,
-                            y,
-                            action
-                        };
+                        let frame = serial::parse(line);
+                        self.last_value = frame;
+                        if frame.action == 1 {
+                            self.snapshots.push(frame);
+                        }
                     }
                     download::Progress::Errored => {
                         // no op
                     }
                 }
+            }
+            Message::Export => {
+                println!("EXPORT");
             }
         }
 
@@ -81,30 +81,47 @@ impl Application for Reader {
     }
 
     fn view(&mut self) -> Element<Self::Message> {
-        let mut ui = Column::new()
-            .padding(20)
-            .align_items(Align::Center);
-        let ports = serial::get_ports();
-        for p in ports {
-            ui = ui.push(
-                Radio::new(p.index, format!("{}", p.name), Some(self.port), Message::RadioSelected)
-            )
+        let window = Row::new().padding(20).align_items(Align::Center);
+        let mut ports = Column::new().padding(20).align_items(Align::Start);
+        let mut data = Column::new().padding(20).align_items(Align::Start);
+        let mut list = Column::new().padding(20).align_items(Align::Start);
+
+        ports = ports.push(
+            Text::new("Portauswahl").size(30)
+        );
+        for p in serial::get_ports() {
+            ports = ports.push(Radio::new(p.index, format!("{}", p.name), Some(self.port), Message::RadioSelected))
         }
-        ui.push(
-            Button::new(&mut self.start_button, Text::new("Start"))
-                    .on_press(Message::SerialStarted),
+        let label = if self.active { "Stop" } else { "Start" };
+        ports = ports.push(
+            Button::new(&mut self.start_button, Text::new(label)).on_press(Message::SerialStartStop)
+        );
+
+        data = data.push(
+            Text::new("Live").size(30)
         ).push(
-            Text::new(self.active.to_string())
-        ).push(
-            Text::new(self.last_value.x.to_string())
-        ).push(
-            Text::new(self.last_value.y.to_string())
-        ).push(
-            Text::new(self.last_value.action.to_string())
-        ).into()
+            Row::new().padding(20).align_items(Align::Center).push(
+                Text::new(self.last_value.x.to_string())
+            ).push(
+                Text::new(self.last_value.y.to_string())
+            )
+        );
+
+        list = list.push(
+            Text::new("Daten").size(30)
+        );
+        let mut index = 1;
+        for snapshot in &self.snapshots {
+            let str = format!("{} {} {}", index, snapshot.x, snapshot.y);
+            list = list.push(Text::new(str));
+            index += 1;
+        }
+        list = list.push(
+            Button::new(&mut self.export_button, Text::new("Export")).on_press(Message::Export)
+        );
+
+        window.push(ports).push(data).push(list).into()
     }
-
-
 }
 
 fn main() {
