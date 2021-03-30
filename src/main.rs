@@ -10,7 +10,6 @@ use iced::{
     button, executor, Align, Application, Button, Column, Command,
     Element, Settings, Subscription, Text, Radio, Clipboard, Row, Length,
 };
-use iced_native::Widget;
 
 #[derive(Default)]
 struct Reader {
