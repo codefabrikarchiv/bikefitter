@@ -1,5 +1,4 @@
 use std::string::String;
-use crate::dataframe::Dataframe;
 
 pub struct Port {
     pub index: i32,
@@ -26,17 +25,5 @@ pub fn port_name_of(index: i32) -> String {
         .find(|x| x.index == index)
         .unwrap()
         .name
-}
-
-pub fn parse(line: String) -> Dataframe {
-    let parts: Vec<&str> = line.split('|').collect();
-    let x = parts[0].to_string().parse::<i32>().unwrap();
-    let y = parts[1].to_string().parse::<i32>().unwrap();
-    let action = parts[2].to_string().parse::<i32>().unwrap();
-    Dataframe {
-        x,
-        y,
-        action
-    }
 }
 

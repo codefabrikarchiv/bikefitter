@@ -3,18 +3,24 @@ mod serial;
 mod dataframe;
 mod export;
 
+use std::str::FromStr;
+use dataframe::Dataframe;
+
 use iced::{
     button, executor, Align, Application, Button, Column, Command,
     Element, Settings, Subscription, Text, Radio, Clipboard, Row, Length,
 };
+use iced_native::Widget;
 
 #[derive(Default)]
 struct Reader {
     start_button: button::State,
     export_button: button::State,
+    calibration_button: button::State,
     port: i32,
     active: bool,
-    last_value: dataframe::Dataframe,
+    offset: Dataframe,
+    last_value: Dataframe,
     snapshots: Vec<dataframe::Dataframe>,
 }
 
@@ -24,6 +30,7 @@ enum Message {
     SerialStartStop,
     SerialUpdate(download::Progress),
     Export,
+    Calibrate,
 }
 
 impl Application for Reader {
@@ -53,10 +60,13 @@ impl Application for Reader {
                         // no op
                     }
                     download::Progress::Advanced(line) => {
-                        let frame = serial::parse(line);
-                        self.last_value = frame;
-                        if frame.action == 1 {
-                            self.snapshots.push(frame);
+                        let frame = Dataframe::from_str(&line).unwrap();
+                        let offset_frame = frame.subtract(self.offset);
+                        if self.active {
+                            self.last_value = offset_frame;
+                            if frame.action == 1 {
+                                self.snapshots.push(offset_frame);
+                            }
                         }
                     }
                     download::Progress::Errored => {
@@ -69,6 +79,9 @@ impl Application for Reader {
                     Ok(()) => println!("Export complete"),
                     Err(e) => eprint!("{:?}", e)
                 }
+            }
+            Message::Calibrate => {
+                self.offset = self.offset.add(self.last_value);
             }
         };
 
@@ -85,10 +98,10 @@ impl Application for Reader {
     }
 
     fn view(&mut self) -> Element<Self::Message> {
-        let window = Row::new().padding(20).align_items(Align::Center);
-        let mut ports = Column::new().padding(20).align_items(Align::Start).width(Length::Fill).height(Length::Fill);
-        let mut data = Column::new().padding(20).align_items(Align::Start).width(Length::Fill).height(Length::Fill);
-        let mut list = Column::new().padding(20).align_items(Align::Start).width(Length::Fill).height(Length::Fill);
+        let window = Row::new().padding(40).spacing(20).align_items(Align::Center);
+        let mut ports = Column::new().spacing(20).align_items(Align::Start).width(Length::Fill).height(Length::Fill);
+        let mut data = Column::new().spacing(20).align_items(Align::Start).width(Length::Fill).height(Length::Fill);
+        let mut list = Column::new().spacing(10).align_items(Align::Start).width(Length::Fill).height(Length::Fill);
 
         ports = ports.push(
             Text::new("Portauswahl").size(30).height(Length::Units(50))
@@ -103,26 +116,36 @@ impl Application for Reader {
 
         data = data.push(
             Text::new("Live").size(30).height(Length::Units(50))
+        )
+        .push(
+            Button::new(&mut self.calibration_button, Text::new("Kalibrierung")).on_press(Message::Calibrate)
         ).push(
-            Row::new().padding(20).align_items(Align::Center).push(
-                Text::new(self.last_value.x.to_string())
+            Column::new().spacing(20).align_items(Align::Center).push(
+                Row::new().spacing(12).align_items(Align::Center).push(
+                    Text::new("X")
+                ).push(
+                    Text::new(self.last_value.x.to_string()).size(30)
+                )
             ).push(
-                Text::new(self.last_value.y.to_string())
+                Row::new().spacing(12).align_items(Align::Center).push(
+                    Text::new("Y")
+                ).push(
+                    Text::new(self.last_value.y.to_string()).size(30)
+                )
             )
         );
 
         list = list.push(
             Text::new("Daten").size(30).height(Length::Units(50))
+        ).push(
+            Button::new(&mut self.export_button, Text::new("Export")).on_press(Message::Export)
         );
         let mut index = 1;
         for snapshot in &self.snapshots {
             let str = format!("{} {} {}", index, snapshot.x, snapshot.y);
-            list = list.push(Text::new(str));
+            list = list.push(Text::new(str).width(Length::Fill));
             index += 1;
         }
-        list = list.push(
-            Button::new(&mut self.export_button, Text::new("Export")).on_press(Message::Export)
-        );
 
         window.push(ports).push(data).push(list).into()
     }
