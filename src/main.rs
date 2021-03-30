@@ -1,15 +1,11 @@
 mod download;
 mod serial;
 mod dataframe;
-
-extern crate nfd;
-use nfd::Response;
-
-use xlsxwriter::Workbook;
+mod export;
 
 use iced::{
     button, executor, Align, Application, Button, Column, Command,
-    Element, Settings, Subscription, Text, Radio, Clipboard, Row,
+    Element, Settings, Subscription, Text, Radio, Clipboard, Row, Length,
 };
 
 #[derive(Default)]
@@ -69,36 +65,9 @@ impl Application for Reader {
                 }
             }
             Message::Export => {
-                let result = nfd::open_save_dialog(Some("xlsx"), None).unwrap_or_else(|e| {
-                    panic!("{}", e);
-                });
-                match result {
-                    Response::Cancel => println!("User canceled"),
-                    Response::Okay(file_path) => {
-                        let fp = file_path + ".xlsx";
-                        let workbook = Workbook::new(&fp);
-                        let sheet = workbook.add_worksheet(None);
-                        match sheet {
-                            Ok(mut sheet) => {
-                                sheet.write_string(0, 0, "Nummer", None);
-                                sheet.write_string(0, 1, "x", None);
-                                sheet.write_string(0, 2, "y", None);
-
-                                let mut row = 1;
-                                for snapshot in &self.snapshots {
-                                    sheet.write_number(row, 0, row.into(), None);
-                                    sheet.write_number(row, 1, snapshot.x.into(), None);
-                                    sheet.write_number(row, 2, snapshot.y.into(), None);
-                                    row += 1;
-                                }
-                                workbook.close();
-                            }
-                            Err(e) => {
-                                eprintln!("{:?}", e);
-                            }
-                        }
-                    }
-                    Response::OkayMultiple(files) => println!("Files {:?}", files),
+                match export::export_data(&self.snapshots) {
+                    Ok(()) => println!("Export complete"),
+                    Err(e) => eprint!("{:?}", e)
                 }
             }
         };
@@ -117,12 +86,12 @@ impl Application for Reader {
 
     fn view(&mut self) -> Element<Self::Message> {
         let window = Row::new().padding(20).align_items(Align::Center);
-        let mut ports = Column::new().padding(20).align_items(Align::Start);
-        let mut data = Column::new().padding(20).align_items(Align::Start);
-        let mut list = Column::new().padding(20).align_items(Align::Start);
+        let mut ports = Column::new().padding(20).align_items(Align::Start).width(Length::Fill).height(Length::Fill);
+        let mut data = Column::new().padding(20).align_items(Align::Start).width(Length::Fill).height(Length::Fill);
+        let mut list = Column::new().padding(20).align_items(Align::Start).width(Length::Fill).height(Length::Fill);
 
         ports = ports.push(
-            Text::new("Portauswahl").size(30)
+            Text::new("Portauswahl").size(30).height(Length::Units(50))
         );
         for p in serial::get_ports() {
             ports = ports.push(Radio::new(p.index, format!("{}", p.name), Some(self.port), Message::RadioSelected))
@@ -133,7 +102,7 @@ impl Application for Reader {
         );
 
         data = data.push(
-            Text::new("Live").size(30)
+            Text::new("Live").size(30).height(Length::Units(50))
         ).push(
             Row::new().padding(20).align_items(Align::Center).push(
                 Text::new(self.last_value.x.to_string())
@@ -143,7 +112,7 @@ impl Application for Reader {
         );
 
         list = list.push(
-            Text::new("Daten").size(30)
+            Text::new("Daten").size(30).height(Length::Units(50))
         );
         let mut index = 1;
         for snapshot in &self.snapshots {
