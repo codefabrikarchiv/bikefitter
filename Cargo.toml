@@ -12,3 +12,5 @@ iced = { git = "https://github.com/hecrj/iced", branch = "master", features = ["
 iced_native = { git = "https://github.com/hecrj/iced", branch = "master" }
 iced_futures = { git = "https://github.com/hecrj/iced", branch = "master" }
 async-std = "1.6.5"
+nfd = "0.0.4"
+xlsxwriter = "0.3.2"
