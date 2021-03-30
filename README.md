@@ -8,7 +8,11 @@ This application acts as a backend for a bike fitting sensor. It reads the senso
 * calibrate the sensor
 * store captured measurements in an Excel file
 
+## Running
+
 To get started on Ubuntu, install the `libudev-dev` and `libgtk-3-dev` packages and run `cargo run`.
+
+## License
 
 This program is licensed under the Gnu General Public License, Version 3. You can use and modify this program, but you must publish any changes you do to the software.
 
