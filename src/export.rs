@@ -1,41 +1,32 @@
 use crate::dataframe::Dataframe;
 
-extern crate nfd;
-use nfd::Response;
+extern crate simple_excel_writer;
+use simple_excel_writer as excel;
 
-use xlsxwriter::Workbook;
-use xlsxwriter::XlsxError;
+use excel::*;
 
-pub fn export_data(snapshots: &Vec<Dataframe>) -> Result<(), XlsxError> {
-    let result = nfd::open_save_dialog(Some("xlsx"), None).unwrap_or_else(|e| {
-        panic!("{}", e);
-    });
-    match result {
-        Response::Cancel => {
-            println!("User canceled");
-            Ok(())
-        }
-        Response::Okay(file_path) => {
-            let fp = file_path + ".xlsx";
-            let workbook = Workbook::new(&fp);
-            let mut sheet = workbook.add_worksheet(None)?;
-            sheet.write_string(0, 0, "Nummer", None)?;
-            sheet.write_string(0, 1, "x", None)?;
-            sheet.write_string(0, 2, "y", None)?;
+use std::path::Path;
 
-            let mut row = 1;
-            for snapshot in snapshots {
-                sheet.write_number(row, 0, row.into(), None)?;
-                sheet.write_number(row, 1, snapshot.x.into(), None)?;
-                sheet.write_number(row, 2, snapshot.y.into(), None)?;
-                row += 1;
-            }
-            workbook.close()?;
-            Ok(())
+pub fn export_data(snapshots: &Vec<Dataframe>) -> Result<(), i32> {
+    let fp = Path::new("./bikefitting.xlsx").to_str().unwrap();
+    let mut wb = Workbook::create(fp);
+    let mut sheet = wb.create_sheet("Bikefitting");
+
+    sheet.add_column(Column { width: 30.0 });
+    sheet.add_column(Column { width: 30.0 });
+    sheet.add_column(Column { width: 30.0 });
+
+    wb.write_sheet(&mut sheet, |sheet_writer| {
+        let sw = sheet_writer;
+        sw.append_row(row!["Nummer", "x", "y"])?;
+        let mut row = 1;
+        for snapshot in snapshots {
+            sw.append_row(row![row.to_string(), snapshot.x.to_string(), snapshot.y.to_string()]);
+            row += 1;
         }
-        Response::OkayMultiple(files) => {
-            println!("Files {:?}", files);
-            Ok(())
-        }
-    }
+        Ok(())
+    }).expect("write error!");
+
+    wb.close().expect("close error!");
+    Ok(())
 }
