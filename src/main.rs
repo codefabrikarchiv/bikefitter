@@ -3,7 +3,6 @@
 mod download;
 mod serial;
 mod dataframe;
-mod export;
 
 use std::str::FromStr;
 use dataframe::Dataframe;
@@ -16,7 +15,6 @@ use iced::{
 #[derive(Default)]
 struct Reader {
     start_button: button::State,
-    export_button: button::State,
     copy_button: button::State,
     port: i32,
     active: bool,
@@ -29,7 +27,6 @@ enum Message {
     RadioSelected(i32),
     SerialStartStop,
     SerialUpdate(download::Progress),
-    Export,
     CopyToClipboard,
 }
 
@@ -60,7 +57,6 @@ impl Application for Reader {
                         // no op
                     }
                     download::Progress::Advanced(line) => {
-                        println!("line {}", line);
                         match Dataframe::from_str(&line) {
                             Ok(frame) => {
                                 if self.active {
@@ -76,12 +72,6 @@ impl Application for Reader {
                     download::Progress::Errored => {
                         // no op
                     }
-                }
-            }
-            Message::Export => {
-                match export::export_data(&self.snapshots) {
-                    Ok(()) => println!("Export complete"),
-                    Err(e) => eprint!("{:?}", e)
                 }
             }
             Message::CopyToClipboard => {
@@ -144,8 +134,6 @@ impl Application for Reader {
 
         list = list.push(
             Text::new("Daten").size(30).height(Length::Units(50))
-        ).push(
-            Button::new(&mut self.export_button, Text::new("Export")).on_press(Message::Export)
         ).push(
             Button::new(&mut self.copy_button, Text::new("Kopieren")).on_press(Message::CopyToClipboard)
         );

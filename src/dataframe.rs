@@ -20,13 +20,13 @@ impl PartialEq for Dataframe {
     }
 }
 
+#[derive(Debug)]
 pub struct ParserError;
 
 impl FromStr for Dataframe {
     type Err = ParserError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        println!("to frame: {}", s);
         let t = s.trim();
         let parts: Vec<&str> = t.split('#').collect();
         if parts.len() == 3 {
@@ -59,38 +59,6 @@ impl FromStr for Dataframe {
 mod tests {
     use crate::Dataframe;
     use std::str::FromStr;
-
-    #[test]
-    fn it_adds() {
-        let df1 = Dataframe { x: 2, y: 3, action: 0 };
-        let df2 = Dataframe { x: 4, y: 6, action: 0 };
-        let df3 = Dataframe { x: 6, y: 9, action: 0 };
-        assert_eq!(df1.add(df2), df3);
-    }
-
-    #[test]
-    fn it_keeps_action_on_add() {
-        let df1 = Dataframe { x: 2, y: 3, action: 1 };
-        let df2 = Dataframe { x: 4, y: 6, action: 0 };
-        let df3 = Dataframe { x: 6, y: 9, action: 1 };
-        assert_eq!(df1.add(df2), df3);
-    }
-
-    #[test]
-    fn it_subtracts() {
-        let df1 = Dataframe { x: 2, y: 3, action: 0 };
-        let df2 = Dataframe { x: 4, y: 6, action: 0 };
-        let df3 = Dataframe { x: 2, y: 3, action: 0 };
-        assert_eq!(df2.subtract(df1), df3);
-    }
-
-    #[test]
-    fn it_keeps_action_on_subtract() {
-        let df1 = Dataframe { x: 4, y: 6, action: 1 };
-        let df2 = Dataframe { x: 2, y: 3, action: 0 };
-        let df3 = Dataframe { x: 2, y: 3, action: 1 };
-        assert_eq!(df1.subtract(df2), df3);
-    }
 
     #[test]
     fn it_parses_from_string() {
