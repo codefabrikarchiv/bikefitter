@@ -43,7 +43,7 @@ impl FromStr for Dataframe {
     type Err = ParseIntError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let parts: Vec<&str> = s.split('|').collect();
+        let parts: Vec<&str> = s.split('#').collect();
         let x = parts[0].to_string().parse::<i32>()?;
         let y = parts[1].to_string().parse::<i32>()?;
         let action = parts[2].to_string().parse::<i32>()?;
@@ -95,10 +95,10 @@ mod tests {
 
     #[test]
     fn it_parses_from_string() {
-        let str1 = "4|6|1";
+        let str1 = "4#6#1";
         let df1 = Dataframe { x: 4, y: 6, action: 1 };
         assert_eq!(Dataframe::from_str(str1).unwrap(), df1);
-        let str2 = "2|3|0";
+        let str2 = "2#3#0";
         let df2 = Dataframe { x: 2, y: 3, action: 0 };
         assert_eq!(Dataframe::from_str(str2).unwrap(), df2);
     }
