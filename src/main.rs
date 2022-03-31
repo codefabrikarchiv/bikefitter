@@ -59,6 +59,7 @@ impl Application for Reader {
                     download::Progress::Advanced(line) => {
                         match Dataframe::from_str(&line) {
                             Ok(frame) => {
+                                println!("SerialUpdate read");
                                 if self.active {
                                     self.last_value = frame;
                                     if frame.action == 1 {

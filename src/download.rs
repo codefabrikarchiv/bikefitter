@@ -55,7 +55,15 @@ impl<H, I> iced_native::subscription::Recipe<H, I> for Download where H: std::ha
                     mut connection,
                 } => {
                     let mut serial_buf = String::new();
-                    let _len = connection.read_line(&mut serial_buf).unwrap();
+                    match connection.read_line(&mut serial_buf) {
+                        Ok(len) => len,
+                        Err(_) => return Some((
+                            Progress::Advanced("".to_string()),
+                            State::Reading  {
+                                connection
+                            }
+                        ))
+                    };
 
                     Some((
                         Progress::Advanced(serial_buf),
