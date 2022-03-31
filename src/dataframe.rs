@@ -1,30 +1,11 @@
 use std::fmt;
 use std::str::FromStr;
-use std::num::ParseIntError;
 
 #[derive(Default, Copy, Clone)]
 pub struct Dataframe {
     pub x: i32,
     pub y: i32,
     pub action: i32,
-}
-
-impl Dataframe {
-    pub fn subtract(&self, subtrahend: Dataframe) -> Dataframe {
-        Dataframe {
-            x: self.x - subtrahend.x,
-            y: self.y - subtrahend.y,
-            action: self.action
-        }
-    }
-
-    pub fn add(&self, summand: Dataframe) -> Dataframe {
-        Dataframe {
-            x: self.x + summand.x,
-            y: self.y + summand.y,
-            action: self.action
-        }
-    }
 }
 
 impl fmt::Debug for Dataframe {

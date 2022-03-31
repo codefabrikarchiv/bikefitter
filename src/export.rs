@@ -21,7 +21,7 @@ pub fn export_data(snapshots: &Vec<Dataframe>) -> Result<(), i32> {
         sw.append_row(row!["Nummer", "x", "y"])?;
         let mut row = 1;
         for snapshot in snapshots {
-            sw.append_row(row![row.to_string(), snapshot.x.to_string(), snapshot.y.to_string()]);
+            sw.append_row(row![row.to_string(), snapshot.x.to_string(), snapshot.y.to_string()]).unwrap();
             row += 1;
         }
         Ok(())

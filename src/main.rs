@@ -17,10 +17,9 @@ use iced::{
 struct Reader {
     start_button: button::State,
     export_button: button::State,
-    calibration_button: button::State,
+    copy_button: button::State,
     port: i32,
     active: bool,
-    offset: Dataframe,
     last_value: Dataframe,
     snapshots: Vec<dataframe::Dataframe>,
 }
@@ -31,7 +30,7 @@ enum Message {
     SerialStartStop,
     SerialUpdate(download::Progress),
     Export,
-    Calibrate,
+    CopyToClipboard,
 }
 
 impl Application for Reader {
@@ -47,7 +46,7 @@ impl Application for Reader {
         String::from("Bike Fitting")
     }
 
-    fn update(&mut self, message: Self::Message, _clipboard: &mut Clipboard) -> Command<Self::Message> {
+    fn update(&mut self, message: Self::Message, clipboard: &mut Clipboard) -> Command<Self::Message> {
         match message {
             Message::RadioSelected(v) => {
                 self.port = v;
@@ -67,11 +66,11 @@ impl Application for Reader {
                                 if self.active {
                                     self.last_value = frame;
                                     if frame.action == 1 {
-                                        // self.snapshots.push(frame);
+                                        self.snapshots.push(frame);
                                     }
                                 }
                             },
-                            Err(e) => println!("SerialUpdate error")
+                            Err(_e) => println!("SerialUpdate error")
                         }
                     }
                     download::Progress::Errored => {
@@ -85,8 +84,13 @@ impl Application for Reader {
                     Err(e) => eprint!("{:?}", e)
                 }
             }
-            Message::Calibrate => {
-                self.offset = self.offset.add(self.last_value);
+            Message::CopyToClipboard => {
+                let mut payload = "".to_string();
+                payload.push_str("ID\tX\tY\n");
+                for (index, frame) in self.snapshots.iter().enumerate() {
+                    payload.push_str(&(format!("{}\t{}\t{}\n", index + 1, frame.x, frame.y)));
+                }
+                clipboard.write(payload);
             }
         };
 
@@ -122,9 +126,7 @@ impl Application for Reader {
         data = data.push(
             Text::new("Live").size(30).height(Length::Units(50))
         )
-        /*.push(
-            Button::new(&mut self.calibration_button, Text::new("Kalibrierung")).on_press(Message::Calibrate)
-        )*/.push(
+        .push(
             Column::new().spacing(20).align_items(Align::Center).push(
                 Row::new().spacing(12).align_items(Align::Center).push(
                     Text::new("X")
@@ -144,6 +146,8 @@ impl Application for Reader {
             Text::new("Daten").size(30).height(Length::Units(50))
         ).push(
             Button::new(&mut self.export_button, Text::new("Export")).on_press(Message::Export)
+        ).push(
+            Button::new(&mut self.copy_button, Text::new("Kopieren")).on_press(Message::CopyToClipboard)
         );
         let mut index = 1;
         for snapshot in &self.snapshots {
