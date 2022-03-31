@@ -1,4 +1,4 @@
-#![windows_subsystem="windows"]
+// #![windows_subsystem="windows"]
 
 mod download;
 mod serial;
@@ -61,13 +61,17 @@ impl Application for Reader {
                         // no op
                     }
                     download::Progress::Advanced(line) => {
-                        let frame = Dataframe::from_str(&line).unwrap();
-                        let offset_frame = frame.subtract(self.offset);
-                        if self.active {
-                            self.last_value = offset_frame;
-                            if frame.action == 1 {
-                                self.snapshots.push(offset_frame);
-                            }
+                        println!("line {}", line);
+                        match Dataframe::from_str(&line) {
+                            Ok(frame) => {
+                                if self.active {
+                                    self.last_value = frame;
+                                    if frame.action == 1 {
+                                        // self.snapshots.push(frame);
+                                    }
+                                }
+                            },
+                            Err(e) => println!("SerialUpdate error")
                         }
                     }
                     download::Progress::Errored => {
@@ -118,9 +122,9 @@ impl Application for Reader {
         data = data.push(
             Text::new("Live").size(30).height(Length::Units(50))
         )
-        .push(
+        /*.push(
             Button::new(&mut self.calibration_button, Text::new("Kalibrierung")).on_press(Message::Calibrate)
-        ).push(
+        )*/.push(
             Column::new().spacing(20).align_items(Align::Center).push(
                 Row::new().spacing(12).align_items(Align::Center).push(
                     Text::new("X")
@@ -155,7 +159,7 @@ impl Application for Reader {
 fn main() {
     let result = Reader::run(Settings::default());
     match result {
-        Ok(v) => println!("{:?}", v),
-        Err(e) => println!("{:?}", e)
+        Ok(v) => println!("v {:?}", v),
+        Err(e) => println!("e {:?}", e)
     }
 }

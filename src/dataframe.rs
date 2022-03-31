@@ -39,20 +39,38 @@ impl PartialEq for Dataframe {
     }
 }
 
+pub struct ParserError;
+
 impl FromStr for Dataframe {
-    type Err = ParseIntError;
+    type Err = ParserError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let parts: Vec<&str> = s.split('#').collect();
-        let x = parts[0].to_string().parse::<i32>()?;
-        let y = parts[1].to_string().parse::<i32>()?;
-        let action = parts[2].to_string().parse::<i32>()?;
+        println!("to frame: {}", s);
+        let t = s.trim();
+        let parts: Vec<&str> = t.split('#').collect();
+        if parts.len() == 3 {
+            let x = match parts[0].to_string().parse::<i32>() {
+                Ok(x) => x,
+                Err(_err) => return Err(ParserError)
+            };
+            let y = match parts[1].to_string().parse::<i32>() {
+                Ok(y) => y,
+                Err(_err) => return Err(ParserError)
+            };
+            let action = match parts[2].to_string().parse::<i32>() {
+                Ok(action) => action,
+                Err(_err) => return Err(ParserError)
+            };
 
-        Ok(Dataframe {
-            x,
-            y,
-            action
-        })
+            Ok(Dataframe {
+                x,
+                y,
+                action
+            })
+        } else {
+            Err(ParserError)
+        }
+        
     }
 }
 
@@ -101,5 +119,8 @@ mod tests {
         let str2 = "2#3#0";
         let df2 = Dataframe { x: 2, y: 3, action: 0 };
         assert_eq!(Dataframe::from_str(str2).unwrap(), df2);
+        let str3 = "9104#10208#0\n";
+        let df3 = Dataframe { x: 9104, y: 10208, action: 0 };
+        assert_eq!(Dataframe::from_str(str3).unwrap(), df3);
     }
 }

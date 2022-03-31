@@ -1,5 +1,7 @@
 use iced_futures::futures;
 use std::time::Duration;
+use std::io::BufReader;
+use std::io::BufRead;
 
 use serialport::{SerialPort, DataBits, StopBits};
 
@@ -40,7 +42,7 @@ impl<H, I> iced_native::subscription::Recipe<H, I> for Download where H: std::ha
                             Some((
                                 Progress::Started,
                                 State::Reading {
-                                    connection,
+                                    connection: BufReader::with_capacity(100, connection),
                                 },
                             ))
                         }
@@ -52,26 +54,15 @@ impl<H, I> iced_native::subscription::Recipe<H, I> for Download where H: std::ha
                 State::Reading {
                     mut connection,
                 } => {
-                    let mut serial_buf: Vec<u8> = vec![0; 32];
-                    let len = connection.read(serial_buf.as_mut_slice());
-                    match len {
-                        Ok(_len) => {
-                            let line = std::str::from_utf8(&serial_buf).unwrap().lines().next().unwrap();
-                            println!("DATA IN: {}", line);
+                    let mut serial_buf = String::new();
+                    let _len = connection.read_line(&mut serial_buf).unwrap();
 
-                            Some((
-                                Progress::Advanced(line.to_string()),
-                                State::Reading {
-                                    connection,
-                                },
-                            ))
-                        }
-                        Err(e) => {
-                            println!("{}", "reading err");
-                            eprintln!("{:?}", e);
-                            Some((Progress::Errored, State::Finished))
-                        }
-                    }
+                    Some((
+                        Progress::Advanced(serial_buf),
+                        State::Reading {
+                            connection,
+                        },
+                    ))
                 },
                 State::Finished => {
                     // We do not let the stream die, as it would start a
@@ -96,7 +87,7 @@ pub enum Progress {
 pub enum State {
     Ready(String),
     Reading {
-        connection: Box<dyn SerialPort>,
+        connection: BufReader<Box<dyn SerialPort>>,
     },
     Finished,
 }
