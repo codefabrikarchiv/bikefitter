@@ -1,3 +1,5 @@
+#![windows_subsystem="windows"]
+
 mod download;
 mod serial;
 mod dataframe;
