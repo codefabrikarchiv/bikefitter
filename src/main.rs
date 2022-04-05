@@ -6,6 +6,7 @@ mod dataframe;
 
 use std::str::FromStr;
 use dataframe::Dataframe;
+use std::convert::TryInto;
 
 use iced::{
     button, executor, Align, Application, Button, Column, Command,
@@ -19,7 +20,7 @@ struct Reader {
     port: i32,
     active: bool,
     last_value: Dataframe,
-    snapshots: Vec<dataframe::Dataframe>,
+    snapshots: Vec<(dataframe::Dataframe, button::State)>,
 }
 
 #[derive(Debug, Clone)]
@@ -28,6 +29,7 @@ enum Message {
     SerialStartStop,
     SerialUpdate(download::Progress),
     CopyToClipboard,
+    Delete(i32)
 }
 
 impl Application for Reader {
@@ -63,7 +65,7 @@ impl Application for Reader {
                                 if self.active {
                                     self.last_value = frame;
                                     if frame.action == 1 {
-                                        self.snapshots.push(frame);
+                                        self.snapshots.push((frame, button::State::new()));
                                     }
                                 }
                             },
@@ -78,10 +80,13 @@ impl Application for Reader {
             Message::CopyToClipboard => {
                 let mut payload = "".to_string();
                 payload.push_str("ID\tX\tY\n");
-                for (index, frame) in self.snapshots.iter().enumerate() {
+                for (index, (frame, _state)) in self.snapshots.iter().enumerate() {
                     payload.push_str(&(format!("{}\t{}\t{}\n", index + 1, frame.x, frame.y)));
                 }
                 clipboard.write(payload);
+            }
+            Message::Delete(index) => {
+                self.snapshots.remove(index as usize);
             }
         };
 
@@ -138,12 +143,32 @@ impl Application for Reader {
         ).push(
             Button::new(&mut self.copy_button, Text::new("Kopieren")).on_press(Message::CopyToClipboard)
         );
-        let mut index = 1;
-        for snapshot in &self.snapshots {
-            let str = format!("{} {} {}", index, snapshot.x, snapshot.y);
-            list = list.push(Text::new(str).width(Length::Fill));
+
+        let dat = self.snapshots.iter_mut().enumerate()
+            .fold(Column::new(), |col, (i, (frame, state))| {
+                col.push(
+                    Row::new().spacing(12).padding(5).align_items(Align::Center).push(
+                        Text::new((i + 1).to_string()).size(30)
+                    ).push(
+                        Text::new(format!("{} | {}", frame.x, frame.y)).width(Length::Fill)
+                    ).push(
+                        Button::new(state, Text::new("löschen")).on_press(Message::Delete(i.try_into().unwrap()))
+                    )
+                )
+            });
+        list = list.push(dat);
+
+        /*for (frame, state) in &self.snapshots {
+            let str = format!("{} {} {}", (index + 1), frame.x, frame.y);
+            list = list.push(
+                Row::new().spacing(12).align_items(Align::Center).push(
+                    Text::new(str).width(Length::Fill)
+                ).push(
+                    Button::new(state.clone().to_mut(), Text::new("löschen")).on_press(Message::Delete(index.try_into().unwrap()))
+                )
+            );
             index += 1;
-        }
+        }*/
 
         window.push(ports).push(data).push(list).into()
     }
