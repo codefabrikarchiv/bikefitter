@@ -13,6 +13,8 @@ use iced::{
     Element, Settings, Subscription, Text, Radio, Clipboard, Row, Length,
 };
 
+use iced_native::HorizontalAlignment;
+
 #[derive(Default)]
 struct Reader {
     start_button: button::State,
@@ -147,10 +149,10 @@ impl Application for Reader {
         let dat = self.snapshots.iter_mut().enumerate()
             .fold(Column::new(), |col, (i, (frame, state))| {
                 col.push(
-                    Row::new().spacing(12).padding(5).align_items(Align::Center).push(
+                    Row::new().spacing(12).padding(2).align_items(Align::Center).push(
                         Text::new((i + 1).to_string()).size(30)
                     ).push(
-                        Text::new(format!("{} | {}", frame.x, frame.y)).width(Length::Fill)
+                        Text::new(format!("{} | {}", frame.x, frame.y)).width(Length::Fill).horizontal_alignment(HorizontalAlignment::Center)
                     ).push(
                         Button::new(state, Text::new("löschen")).on_press(Message::Delete(i.try_into().unwrap()))
                     )
